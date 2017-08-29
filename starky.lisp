@@ -54,10 +54,11 @@
 				     0.0 pointsize 0.0
 				     0.0 0.0 1.0))))
     (vg:get-matrix old-matrix)
+    #||
     (loop for q across (font-glyphs font)
        for i from 0 do
 	 (format t "~&xxx ~A ~X" i q))
-    
+    ||#
     (loop for c across string
        for glyph-index =  (aref  (font-character-map font) (char-code c))
        for xx = x then (+ xx
@@ -157,29 +158,33 @@
 (defun work ()
  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (with:all
-      ((vec (rgb-back '(0.9 0.2 0.3 1.0)))
-       (vec (rgb-fill '(0.0 0.7 1.0 1.0))))
+      ((vec (rgb-back '(0.0 0.0 0.0 1.0)		;'(0.9 0.2 0.3 1.0)
+	     ))
+       (vec (rgb-fill '(1.0 0.7 1.0 1.0))))
     (background rgb-back)
     (set-fill rgb-fill)
     (circle 500.0 0.0 500.0  )
-    (text 100.0 100.0 "fuck" *q* 12.0)
+    (text 100.0 100.0 "The qiuick brown fox jumps over the lazy fox" *font* 89.0)
 
 
 ))
 
-(defun ttt ()
+(defun tin ()
   ( native::init :api egl:openvg-api)
+  (load-cold-font *cold-font*)
+)
+(defun ttt ()
   ;; background
-  (setf *q* (load-font-dejavu-sans-mono))
   (work)
    (print (vg:get-error)) (force-output)
   (vg:flush)
   (egl:swap-buffers native::*surface*)
-  (sleep 10)
-  (unload-font *dejavu-sans*)
-  (native::deinit)
+  ;;(sleep 10)
+  
   )
-
+(defun tout ()
+  (unload-font *font*)
+  (native::deinit))
 
 
 

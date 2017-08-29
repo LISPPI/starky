@@ -1,5 +1,15 @@
 (in-package #:starky)
 ;;==============================================================================
+;; cold font from storage...
+(defparameter *cold-font* nil)
+(defstruct cfont
+  name
+  count height descender
+  codes codex codecnt ;;instructions, indices and counts...
+  points pointx
+  advances
+  charmap)
+;;==============================================================================
 ;;
 (defstruct font character-map glyph-advances count descender-height font-height
 	   glyphs)
@@ -20,47 +30,43 @@
 	    (make-array
 	     ng :initial-contents 
 	     (loop for i from 0 upto (1-  ng)
+		for proposed-index = 0 then (+ proposed-index  instruction-count) ;;use last count
 		for instruction-count  across instruction-counts
 		for point-index        across point-indices
-		for instruction-index  across instruction-indices
+		for instruction-index across instruction-indices
+
+		;;across instruction-indices
 		  
-		for path = (vg:create-path vg:path-format-standard
-					   vg:path-datatype-s-32
-					   (/ 1.0 65536.0) 0.0
-					   0 0
-					   vg:path-capability-append-to)
-	 
-		unless (zerop instruction-count) :do
-		  (format t "~&---. ~A ~X ~X" i path ( vg:get-error ))		  
+		for path =  (vg:create-path vg:path-format-standard
+					      vg:path-datatype-s-32
+					      (/ 1.0 65536.0) 0.0
+					      0 0
+					      vg:path-capability-append-to)
+		for dummy = (format t "~&---. ~A ~A ~A ~X" i instruction-index proposed-index path)		  
+		unless (zerop instruction-count)
+		:do
 		  (vg:append-path-data path instruction-count
-				       (cffi-sys:inc-pointer &instructions instruction-index)
+				       (cffi-sys:inc-pointer &instructions proposed-index;;instruction-index
+							     )
 				       (cffi-sys:inc-pointer &points (* 8 point-index)))
 	
 		collect path)))
       (foreign-free &instructions)
       (foreign-free &points))))
 
+(defparameter *font* nil)
 (defun unload-font (font)
   (loop for path across (font-glyphs font)
      do (vg:destroy-path path )))
 
-(defun load-font-dejavu-sans ()
-  (load-font dejavu-sans-glyph-points
-	     dejavu-sans-glyph-point-indices
-	     dejavu-sans-glyph-instructions
-	     dejavu-sans-glyph-instruction-indices
-	     dejavu-sans-glyph-instruction-counts
-	     dejavu-sans-glyph-advances
-	     dejavu-sans-character-map
-	     dejavu-sans-glyph-count))
+(defun load-cold-font (coldfont)
+  (with-slots (name count height descender
+		    codes codex codecnt
+		    points pointx advances charmap) coldfont
+    (setf *font*
+	  (load-font points pointx
+		     codes codex codecnt
+		     advances charmap count))))
 
-(defun load-font-dejavu-sans-mono ()
-  (load-font dejavu-sans-mono-glyph-points
-	     dejavu-sans-mono-glyph-point-indices
-	     dejavu-sans-mono-glyph-instructions
-	     dejavu-sans-mono-glyph-instruction-indices
-	     dejavu-sans-mono-glyph-instruction-counts
-	     dejavu-sans-mono-glyph-advances
-	     dejavu-sans-mono-character-map
-	     dejavu-sans-mono-glyph-count))
 
+;; first one gets 0 from 0.  Second,14 from 0. etc.
