@@ -18,7 +18,7 @@
   advances ;U32 8   width table                              liap
   charmap  ;S16 9   map character code to glyph; -1 is none  lisp
   )
-#||
+
 (defun cfont-save (cfont path)
   (with-slots (name count height descender
 		    codes codex codecnt
@@ -28,9 +28,23 @@
       (cl-binary:write-u32 out height)
       (cl-binary:write-s32 out descender)
       ;; codes
-      (cl-binary:write-u32 (length codes))
-      (cl-binary:write-u8vector out codes)
+      (cl-binary:write-u32 out (length codes))
+      (cl-binary:write-u8vector out codes) ;guaranteed
+      (cl-binary:write-u32 out (length codecnt))
+      (cl-binary:write-u8vector out codecnt);almost guaranteed
+      ;; points
+      (cl-binary:write-u32 out (length points))
+      (cl-binary:write-s32vector out points)
+      (cl-binary:write-u32 out (length pointx))
+      (cl-binary:write-u32vector out pointx)
+      ;; rest
+      (cl-binary:write-u32 out (length advances))
+      (cl-binary:write-u32vector out advances)
+      (cl-binary:write-u32 out (length charmap))
+      (cl-binary:write-s32vector out points)
+
+      
       
 
       )))
-||#
+#

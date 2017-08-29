@@ -164,14 +164,14 @@
     (background rgb-back)
     (set-fill rgb-fill)
     (circle 500.0 0.0 500.0  )
-    (text 100.0 100.0 "The qiuick brown fox jumps over the lazy fox" *font* 89.0)
+    (text 100.0 500.0 "The qiuick brown fox jumps over the lazy fox" *font* 7.9)
 
 
 ))
 
 (defun tin ()
   ( native::init :api egl:openvg-api)
-  (load-cold-font *cold-font*)
+  (load-font *cold-font*)
 )
 (defun ttt ()
   ;; background
