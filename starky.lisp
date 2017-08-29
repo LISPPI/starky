@@ -47,6 +47,43 @@
 (defun clip-end ()
   (vg:set-i vg:scissoring 0))
 ;;------------------------------------------------------------------------------
+(defun text (x y string font pointsize)
+  (let ((old-matrix (foreign-alloc :float :count 9))
+	(matrix (foreign-alloc :float :initial-contents
+			       (list pointsize 0.0 0.0
+				     0.0 pointsize 0.0
+				     0.0 0.0 1.0))))
+    (vg:get-matrix old-matrix)
+    (loop for q across (font-glyphs font)
+       for i from 0 do
+	 (format t "~&xxx ~A ~X" i q))
+    
+    (loop for c across string
+       for glyph-index =  (aref  (font-character-map font) (char-code c))
+       for xx = x then (+ xx
+			  (/ (* pointsize
+				(aref (font-glyph-advances font) glyph-index))
+			     65536.0))
+       unless (= -1 glyph-index)
+       do
+	 (setf (mem-ref matrix :float 24) xx
+	       (mem-ref matrix :float 28) y)
+	 (vg:load-matrix old-matrix)
+	 (format t "~&B. ~A ~A ~X" xx y( vg:get-error ))
+	 (vg:mult-matrix matrix)
+	 (format t "~&C... ~A ~A ~X" xx y (vg:get-error ))
+	 (vg:draw-path (aref (font-glyphs font) glyph-index)
+		       vg:FILL-PATH)
+	 (format t "~&D.. glyphindex ~A  ~X ~X"  glyph-index (aref (font-glyphs font) glyph-index)
+		 (vg:get-error ))
+
+;;	 (print (char-code c))
+	 )
+    (vg:load-matrix old-matrix)
+    (foreign-free old-matrix)
+    (foreign-free matrix))
+  )
+;;------------------------------------------------------------------------------
 (defun new-path ()
   (vg:create-path vg:path-format-standard
 		  vg:path-datatype-f
@@ -105,7 +142,7 @@
       (vg:clear 0 0 w h)
       (set-fill black)
       (set-stroke black)
-      (stroke-width 0 )
+      (stroke-width 0.0 )
       (vg:load-identity))))
 
 (defun end ()
@@ -125,19 +162,40 @@
     (background rgb-back)
     (set-fill rgb-fill)
     (circle 500.0 0.0 500.0  )
+    (text 100.0 100.0 "fuck" *q* 12.0)
+
 
 ))
 
 (defun ttt ()
   ( native::init :api egl:openvg-api)
   ;; background
-  
+  (setf *q* (load-font-dejavu-sans-mono))
   (work)
-  ;;  (print (vg:get-error)) (force-output)
-
+   (print (vg:get-error)) (force-output)
   (vg:flush)
   (egl:swap-buffers native::*surface*)
-  (sleep 1)
+  (sleep 10)
+  (unload-font *dejavu-sans*)
   (native::deinit)
   )
 
+
+
+
+;; coordpoint marks a coordinate, preserving a previous color
+(defun coordpoint (x y size pcolor)
+  (with-vec (color '(0.5 0.0 0.0 0.3))
+    (set-fill color)
+    (circle x y size)
+    (set-fill pcolor)))
+
+(defun grid (x y n w h)
+  (with-vec (color '(0.5 0.5 0.5 0.5))
+    (set-stroke color)
+    (stroke-width 1.0)
+    (loop for ix from x to (+ x w) by n
+       do (line ix y ix (+ y h)))
+
+    (loop for iy from y to (+ y h) by n
+	 do (line x iy (+ x w) iy))))
