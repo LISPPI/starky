@@ -70,16 +70,15 @@
 	 (setf (mem-ref matrix :float 24) xx
 	       (mem-ref matrix :float 28) y  )
 	 (vg:load-matrix old-matrix)
-	 (format t "~&B. ~A ~A ~X" xx y( vg:get-error ))
+;;	 (format t "~&B. ~A ~A ~X" xx y( vg:get-error ))
 	 (vg:mult-matrix matrix)
-	 (format t "~&C... ~A ~A ~X" xx y (vg:get-error ))
+;;	 (format t "~&C... ~A ~A ~X" xx y (vg:get-error ))
 	 (vg:draw-path (aref (font-glyphs font) glyph-index)
-		       vg:FILL-PATH)
-	 (format t "~&D.. glyphindex ~A  ~X ~X"  glyph-index (aref (font-glyphs font) glyph-index)
-		 (vg:get-error ))
+		       vg:fill-path))
+;;    (format t "~&D.. glyphindex ~A  ~X ~X"  glyph-index (aref (font-glyphs font) glyph-index)    (vg:get-error ))
 
-;;	 (print (char-code c))
-	 )
+       ;;	 (print (char-code c))
+	 
     (vg:load-matrix old-matrix)
     (foreign-free old-matrix)
     (foreign-free matrix))
@@ -126,7 +125,8 @@
 (defun ellipse (x y w h)
   (vg:with-path (path (new-path))
     (vgu:ellipse path x y w h)
-    (vg:draw-path path  (logior vg:fill-path vg:stroke-path))))
+    (vg:draw-path path  (logior vg:fill-path vg:stroke-path))
+    ))
 
 (defun circle (x y r)
   (ellipse x y r r ))
@@ -167,7 +167,7 @@
 	      )
     (circle 500.0 0.0 500.0  )
    ;; (stroke-width 5.0)
-    (text 100.0 500.0 "The qiuick brown fox jumps over the lazy fox" *font* 19.0)
+    (text 100.0 500.0 "The qiuick brown fox jumps over the lazy fox" *font* 12.0)
 
 
 ))

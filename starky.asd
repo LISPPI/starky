@@ -5,13 +5,14 @@
   :author "StackSmith <fpgasm@apple2.x10.mx>"
   :license "BSD 3-clause license"
   :serial t
-  :depends-on ( #:trivial-with #:lisppi-openvg)
+  :depends-on (#:cl-freetype2 #:trivial-with #:lisppi-openvg)
   :components ((:file "package")
 	       (:file "util")
 	       (:file "vec")
 
 	       (:file "font")
 	       (:file "dejavu-sans-mono")
+
 	       
 	       (:file "starky")))
 
