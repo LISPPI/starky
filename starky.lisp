@@ -163,11 +163,10 @@
        (vec (rgb-fill '(0.0 0.0 0.0 1.0))))
     (background rgb-back)
     (set-fill rgb-fill)
-    (vg:set-i vg:rendering-quality vg:quality-faster
-	      )
+    (vg:set-i vg:rendering-quality vg:quality-faster  )
     (circle 500.0 0.0 500.0  )
    ;; (stroke-width 5.0)
-    (text 100.0 500.0 "The qiuick brown fox jumps over the lazy fox" *font* 12.0)
+    (text 100.0 500.0 "The qiuick brown fox jumps over the lazy fox" *font* 11.0)
 
 
 ))
@@ -176,8 +175,8 @@
   ( native::init :api egl:openvg-api)
   (load-font *cold-font*)
     (vg:set-i vg:rendering-quality vg:quality-better)
-    (vg:set-i vg:pixel-layout vg:pixel-layout-rgb-horizontal)
-    (vg:set-i vg:screen-layout vg:pixel-layout-rgb-horizontal)
+    (vg:set-i vg:pixel-layout vg:pixel-layout-rgb-vertical)
+    (vg:set-i vg:screen-layout vg:pixel-layout-rgb-vertical)
     
 )
 (defun ttt ()
