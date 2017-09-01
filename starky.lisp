@@ -1,7 +1,36 @@
 (in-package #:starky)
 ;;==============================================================================
 ;;
- 
+ (defmacro with-matrix ((newvar &optional initial-contents) &body body)
+  "Create a context with a newly initialized matrix, while preserving the 
+old one.  The old one is stored in the 9 floats just above the new one.
+When the body executes, the new matrix data is available, and active,
+while the old matrix data is preserved and restored on exit."
+  (let ((init-con (gensym)))
+    `(let* ((,init-con ,initial-contents)
+	    (,newvar (foreign-alloc :float
+				   :initial-contents ,init-con
+				   :count 18)))
+       (vg:get-matrix (cffi-sys:inc-pointer ,newvar 36)) ; preserve old matrix.
+       (if ,init-con
+	   ;; if there is a new matrix, load it now.
+	   (vg:load-matrix ,newvar)
+	   ;; otherwise, get a copy of the one currently loaded.
+	   (vg:get-matrix  ,newvar)) ; and store it as current.
+       ,@body
+       (vg:load-matrix (cffi-sys:inc-pointer ,newvar 36)); restore old matrix.
+       (foreign-free ,newvar))))
+
+; VG matrices are in column order, but it row order is easier in text
+;; a b c         a d g
+;; d e f  VG is  b e h
+;; g h i         c f i
+(defmacro matrix (a b c
+		  d e f
+		  g h i)
+  `'(,a ,d ,g
+     ,b ,e ,h
+     ,c ,f ,i))
 
 (defun set-fill (rgba)
   (vg:with-paint (paint)
