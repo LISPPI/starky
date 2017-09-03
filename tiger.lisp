@@ -1226,6 +1226,9 @@
      for i from 0
      do (setf (aref *tiger-parts* i) (part-make datum))))
 
+(defun tiger-parts-free ()
+    (loop for part in *tiger-parts* do
+	 (part-free part)))
 (defparameter *tiger-paths* (make-array 240))
 
 (defparameter *tiger-stroke* nil)
@@ -1234,6 +1237,9 @@
 (defun tiger-paths ()
 ;;  (vg:with-path (temp (new-path)))
   (vg:set-i vg:matrix-mode vg:matrix-path-user-to-surface)
+;;  (vg:translate -200.0 200.0)
+  (vg:scale 1.0 -1.0)
+
   (loop for part across *tiger-parts*
      for i from 0
      do
@@ -1259,19 +1265,16 @@
   (vg:set-paint *tiger-fill* vg:FILL-PATH)
   (vg:load-identity))
 
+;;    "destroy paths.  destroy parts too to dealloc"
+(defun tiger-paths-free ()
+    (loop for path across *tiger-paths* do
+	 (vg:destroy-path path)))
+
 
 (defun tiger-display-part (i)
-    (vg:set-paint *tiger-stroke* vg:stroke-path)
-  (vg:set-parameter-i *tiger-stroke* vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
-  (vg:set-paint *tiger-fill* vg:fill-path)
-  (vg:set-parameter-i *tiger-fill* vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
-
   (let* ((p (aref *tiger-paths* i))
 	 (part (aref *tiger-parts* i))
 	 (style (part-style part)) )
-
-    
-    
     (vg:set-parameter-fv
      *tiger-stroke* vg:paint-color 4 style)
     (vg:set-parameter-fv
@@ -1280,17 +1283,67 @@
     (vg:set-f vg:stroke-line-width (mem-ref style :float  (* 8 4)))
     (vg:draw-path p (part-end part)))
   )
-(defun tiger-display (x y )
+(defun tiger-display (x y &optional (scale 1.0) (rot 1.0))
   (start 1920 1080)
+  
   (vg:translate x y)
-  (vg:scale 1.0 -1.0)
+  (vg:rotate rot)
+  (vg:translate -100.0 -100.0)
+
+  (vg:scale scale  scale)
   (vg:set-i vg:image-mode vg:draw-image-normal)
+    (vg:set-paint *tiger-stroke* vg:stroke-path)
+  (vg:set-parameter-i *tiger-stroke* vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
+  (vg:set-paint *tiger-fill* vg:fill-path)
+  (vg:set-parameter-i *tiger-fill* vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
+
   (loop  for i from 0 to 239 do    (tiger-display-part i) )
   ;;(tiger-display-part i)
 
   (vg:flush)
-  (egl:swap-buffers native::*surface*))
+  (egl:swap-buffers native::*surface*)
+  )
 
+(defun tiger-in ()
+  (tiger-parts)
+  (tiger-paths))
 
+(defun tiger-out ()
+  (tiger-paths-free)
+  (tiger-parts-free)  )
 
+(defun tiger-test ()
+  
+  (tiger-display 600.0 600.0)
 
+)
+
+(defun tiger-test1 ()
+  (with-vec (scissor '(0 0 1920 1080))
+    (vg:set-i vg:scissoring 1)
+    (vg:set-iv vg:scissor-rects 4 scissor))
+  (let ((x 600.0)
+	(y 600.0)
+	(rot 0.0)
+	(scale 1.0)
+	(inc-x (random 5.0))
+	(inc-y (random 5.0))
+	(inc-scale (random 0.04))
+	(inc-rot (random 2.0)))
+    (loop for i from 1 to 300 do
+	 (when (or (> x 1500.0)
+		 (< x 200.0))
+	   (setf inc-x (- inc-x)))
+	 (when (or (> y 900.0)
+		   (< y 200.0))
+	   (setf inc-y (- inc-y)))
+	 (when (or (> scale 2.0)
+		   (< scale .3))
+	   (setf inc-scale (- inc-scale)))
+	 (tiger-display x y scale rot)
+	 (setf x (+ x inc-x)
+	       y (+ y inc-y)
+	       rot (+ rot inc-rot)
+	       scale (+ scale inc-scale)))))
+
+  
