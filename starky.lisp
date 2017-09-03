@@ -21,6 +21,7 @@ while the old matrix data is preserved and restored on exit."
        (vg:load-matrix (cffi-sys:inc-pointer ,newvar 36)); restore old matrix.
        (foreign-free ,newvar))))
 
+;; TODO: verify this!
 ; VG matrices are in column order, but it row order is easier in text
 ;; a b c         a d g
 ;; d e f  VG is  b e h
@@ -32,15 +33,15 @@ while the old matrix data is preserved and restored on exit."
      ,b ,e ,h
      ,c ,f ,i))
 
-
-
 (defun set-fill (rgba)
+  "set fill to solid rgba paint.  RGBA is a foreign array of floats"
   (vg:with-paint (paint)
     (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
     (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
     (vg:set-paint paint vg:FILL-PATH)))
 
 (defun set-stroke (rgba)
+  "set stroke to solid rgba paint."
    (vg:with-paint (paint)
     (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
     (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
@@ -76,33 +77,7 @@ while the old matrix data is preserved and restored on exit."
 
 (defun clip-end ()
   (vg:set-i vg:scissoring 0))
-;;------------------------------------------------------------------------------
-(defun texthack (x y string font pointsize)
-  (let ((old-matrix (foreign-alloc :float :count 9))
-	(matrix (foreign-alloc :float :initial-contents
-			       (list  pointsize 0.0 0.0
-				     0.0 pointsize 0.0
-				     0.0 0.0 1.0))))
-    (vg:get-matrix old-matrix)
-    (loop for c across string
-       for glyph-index =  (aref  (font-character-map font) (char-code c))
-       for xx = x then (+ xx
-			  (/ (* pointsize 
-				(aref (font-glyph-advances font) glyph-index))
-			     65536.0))
-       unless (= -1 glyph-index)
-       do
-	 (setf (mem-ref matrix :float 24) xx
-	       (mem-ref matrix :float 28) y  )
-	 (vg:load-matrix old-matrix)
-	 (vg:mult-matrix matrix)
-	 (vg:draw-path (aref (font-glyphs font) glyph-index)
-		       vg:fill-path))
-	 
-    (vg:load-matrix old-matrix)
-    (foreign-free old-matrix)
-    (foreign-free matrix))
-  )
+
 
 
 ;;------------------------------------------------------------------------------
@@ -165,7 +140,7 @@ while the old matrix data is preserved and restored on exit."
       (vg:clear 0 0 w h)
       (set-fill black)
       (set-stroke black)
-      (stroke-width 0.0 )
+      (stroke-width 1.0 )
       (vg:load-identity))))
 
 (defun end ()
@@ -175,5 +150,5 @@ while the old matrix data is preserved and restored on exit."
 
 (defun background (rgba)
   (vg:set-fv vg:CLEAR-COLOR 4 rgba)
-  (vg:clear 0 0 1200 1080))
+  (vg:clear 0 0 1920 1080))
 

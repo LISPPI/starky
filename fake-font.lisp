@@ -109,3 +109,5 @@
 	 (vg:draw-path (aref (fake-font-glyphs fake-font) glyph-index)
 		       vg:fill-path))))
 
+
+

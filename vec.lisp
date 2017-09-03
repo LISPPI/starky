@@ -19,7 +19,7 @@
 		     (vec-deduce-foreign-type initial-contents))
 		 :initial-contents initial-contents))
 
-
+#||
 (defmacro with-vec ((var initial-contents &optional type) &body body)
   (let ((ic initial-contents))
     `(let ((,var (typecase ,ic
@@ -31,17 +31,21 @@
 	   (progn (format t "HA~&")
 		  ,@body)
 	(foreign-free ,var)))))
-
-(defmacro with-vec ((var initial-contents &optional type) &body body)
+||#
+(defmacro with-vec ((var initial-contents) &body body)
   (let ((ic initial-contents))
     `(let ((,var   (make-vec ,ic )))
-       (declare (type cffi-sys:foreign-pointer ,var)
-	)
+       (declare (type cffi-sys:foreign-pointer ,var))
 ;;      (unwind-protect)
        	  ,@body
       (foreign-free ,var))))
 
-
+(defmacro with-byte-vec ((var initial-contents) &body body)
+  (let ((ic initial-contents))
+    `(let ((,var   (foreign-alloc :uint8 :initial-contents ,ic )))
+       (declare (type cffi-sys:foreign-pointer ,var))
+       ,@body
+      (foreign-free ,var))))
 ;;=================================================================
 ;; RGBA vecs are often quoted as groups of 0-255 components.
 
