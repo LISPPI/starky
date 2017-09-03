@@ -6,7 +6,7 @@
 old one.  The old one is stored in the 9 floats just above the new one.
 When the body executes, the new matrix data is available, and active,
 while the old matrix data is preserved and restored on exit."
-  (let ((init-con (gensym)))
+  (let ((init-con (gensym "fuck")))
     `(let* ((,init-con ,initial-contents)
 	    (,newvar (foreign-alloc :float
 				   :initial-contents ,init-con
@@ -31,6 +31,8 @@ while the old matrix data is preserved and restored on exit."
   `'(,a ,d ,g
      ,b ,e ,h
      ,c ,f ,i))
+
+
 
 (defun set-fill (rgba)
   (vg:with-paint (paint)
@@ -68,7 +70,6 @@ while the old matrix data is preserved and restored on exit."
     (vg:set-parameter-i paint vg:PAINT-TYPE vg:paint-type-radial-gradient )
     (vg:set-parameter-fv paint vg:paint-radial-gradient 5 radial5)
     (set-stop paint stops n)))
-
 (defun clip-rect (xywh)
   (vg:set-i vg:scissoring 1)
   (vg:set-iv vg:scissor-rects 4 xywh))
@@ -76,18 +77,13 @@ while the old matrix data is preserved and restored on exit."
 (defun clip-end ()
   (vg:set-i vg:scissoring 0))
 ;;------------------------------------------------------------------------------
-(defun text (x y string font pointsize)
+(defun texthack (x y string font pointsize)
   (let ((old-matrix (foreign-alloc :float :count 9))
 	(matrix (foreign-alloc :float :initial-contents
 			       (list  pointsize 0.0 0.0
 				     0.0 pointsize 0.0
 				     0.0 0.0 1.0))))
     (vg:get-matrix old-matrix)
-    #||
-    (loop for q across (font-glyphs font)
-       for i from 0 do
-	 (format t "~&xxx ~A ~X" i q))
-    ||#
     (loop for c across string
        for glyph-index =  (aref  (font-character-map font) (char-code c))
        for xx = x then (+ xx
@@ -99,19 +95,16 @@ while the old matrix data is preserved and restored on exit."
 	 (setf (mem-ref matrix :float 24) xx
 	       (mem-ref matrix :float 28) y  )
 	 (vg:load-matrix old-matrix)
-;;	 (format t "~&B. ~A ~A ~X" xx y( vg:get-error ))
 	 (vg:mult-matrix matrix)
-;;	 (format t "~&C... ~A ~A ~X" xx y (vg:get-error ))
 	 (vg:draw-path (aref (font-glyphs font) glyph-index)
 		       vg:fill-path))
-;;    (format t "~&D.. glyphindex ~A  ~X ~X"  glyph-index (aref (font-glyphs font) glyph-index)    (vg:get-error ))
-
-       ;;	 (print (char-code c))
 	 
     (vg:load-matrix old-matrix)
     (foreign-free old-matrix)
     (foreign-free matrix))
   )
+
+
 ;;------------------------------------------------------------------------------
 (defun new-path ()
   (vg:create-path vg:path-format-standard
@@ -183,80 +176,4 @@ while the old matrix data is preserved and restored on exit."
 (defun background (rgba)
   (vg:set-fv vg:CLEAR-COLOR 4 rgba)
   (vg:clear 0 0 1200 1080))
-
-(defun work ()
- ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (with:all
-      ((vec (rgb-back '(1.0 1.0 1.0 1.0)		;'(0.9 0.2 0.3 1.0)
-	     ))
-       (vec (rgb-fill '(0.0 0.0 0.0 1.0))))
-    (background rgb-back)
-    (set-fill rgb-fill)
-    (vg:set-i vg:rendering-quality vg:quality-faster  )
-    (circle 500.0 0.0 500.0  )
-   ;; (stroke-width 5.0)
-    (text 100.0 500.0 "The qiuick brown fox jumps over the lazy fox" *font* 11.0)
-
-
-))
-
-(defun tin ()
-  ( native::init :api egl:openvg-api)
-  (load-font *cold-font*)
-    (vg:set-i vg:rendering-quality vg:quality-better)
-    (vg:set-i vg:pixel-layout vg:pixel-layout-rgb-vertical)
-    (vg:set-i vg:screen-layout vg:pixel-layout-rgb-vertical)
-    
-)
-(defun ttt ()
-  ;; background
-  (work)
-  (print (vg:get-error)) (force-output)
-  (vg:set-i vg:rendering-quality vg:quality-better
-	    )
-  (vg:flush)
-  (egl:swap-buffers native::*surface*)
-  ;;(sleep 10)
-  ;;(egl:swap-buffers native::*surface*)
-  
-  )
-(defun tout ()
-  (unload-font *font*)
-  (native::deinit)
-)
-
-
-
-;; coordpoint marks a coordinate, preserving a previous color
-(defun coordpoint (x y size pcolor)
-  (with-vec (color '(0.5 0.0 0.0 0.3))
-    (set-fill color)
-    (circle x y size)
-    (set-fill pcolor)))
-
-(defun grid (x y n w h)
-  (with-vec (color '(0.5 0.5 0.5 0.5))
-    (set-stroke color)
-    (stroke-width 1.0)
-    (loop for ix from x to (+ x w) by n
-       do (line ix y ix (+ y h)))
-
-    (loop for iy from y to (+ y h) by n
-	 do (line x iy (+ x w) iy))))
-
-
-(defun fuckle (w)
-  (with:all
-      ((dx:rect (dst-rect 0 0 960 540
-					;(+ w 100) 100 920 580
-		 ))
-       (dx:rect (src-rect 0 0 (ash 1920 16) (ash 1080 16))))
-    (let ((update (dx:update-start))
-	  (element (mem-ref native::*native* :uint)))
-      (dx:element-change-attributes
-       update element dx:CHANGE-TRANSFORM 0 255 dst-rect src-rect  0 :transform #x20000)
-	(dx:update-submit-sync update)))
-  )
-
-;;(loop for i from 10 to 134 by 1 do (fuckle i))
 

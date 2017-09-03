@@ -1,5 +1,15 @@
 (in-package #:starky)
 ;;==============================================================================
+;; Fake Text
+;;
+;; Not entirely fake, this text is built out of paths, based on A.J.Stark's
+;; model of text rendering.
+;;
+;; Pros: resolution-independent, compact.
+;; Cons: looks like shit (the fuzzy top line problem, plus fuzzy everything.
+;;
+
+;;==============================================================================
 ;; cold font from storage...Turns out it's not worth a binary save.
 ;;
 ;; So we load a lispy cfont, and activate it as seen later.
@@ -28,7 +38,7 @@
 	(&points       (foreign-alloc :int  :initial-contents points)))
     (%print-mem &points ) 
     (prog1
-	(make-font
+	(make-fake-font
 	    :character-map cmap     :glyph-advances adv
 	    :count ng               :descender-height 0
 	    :font-height 0
@@ -58,20 +68,44 @@
       (foreign-free &points))))
 
 (defparameter *font* nil)
+
 (defun unload-font (font)
-  (loop for path across (font-glyphs font)
+  (loop for path across (fake-font-glyphs font)
      do (vg:destroy-path path )))
 
 (defun load-font (coldfont)
   (with-slots (name count height descender
-		    codes ;;codex deprecated
+		    codes 
 		    codecnt
 		    points pointx advances charmap) coldfont
     (setf *font*
 	  (load-font-prim points pointx
 		     codes codecnt
 		     advances charmap count)))
+  (setf *cold-font* nil)
   nil)
 
 
-;; first one gets 0 from 0.  Second,14 from 0. etc.
+;;
+;;
+
+(defun fake-text (x y string &key (fake-font *font*) (pointsize 11.0))
+  (with-matrix (matrix (list  pointsize     0.0        0.0
+			      0.0           pointsize  0.0
+			      0.0           0.0        1.0))
+    (loop for c across string
+       for glyph-index =  (aref  (fake-font-character-map fake-font) (char-code c))
+       for xx = x then (+ xx
+			  (/ (* pointsize 
+				(aref (fake-font-glyph-advances fake-font) glyph-index))
+			     65536.0))
+       unless (= -1 glyph-index)
+       do
+	 (setf (mem-ref matrix :float (* 6 4)) xx
+	       (mem-ref matrix :float (* 7 4)) y  )
+	 
+	 (vg:load-matrix (cffi-sys:inc-pointer matrix (* 9 4)));; old matrix
+	 (vg:mult-matrix matrix)
+	 (vg:draw-path (aref (fake-font-glyphs fake-font) glyph-index)
+		       vg:fill-path))))
+

@@ -10,9 +10,15 @@
 	       (:file "util")
 	       (:file "vec")
 
-	       (:file "font")
-	       (:file "dejavu-sans-mono")
+;;	       (:file "font")
 
 	       
-	       (:file "starky")))
+	       (:file "starky")
+	       ;;	       (:file "fake-font")
+	       ;;	       (:file "dejavu-sans-mono")
+
+	       (:file "ft")
+
+;;	       (:file "test")
+	       ))
 
