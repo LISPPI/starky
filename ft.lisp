@@ -26,10 +26,14 @@
 
 
 ;; cache of codes we have
-(defparameter *origin* (make-vec '(0.0 0.0)))
+(eval-when (:execute :load-toplevel :compile-toplevel)
+  (defparameter *glomal* (vg:make-mm))
+  (vg:with-mm *glomal*
+    (defparameter *origin* #{0.0 0.0})
+    (defparameter *escapement* #{7.0 0.0}  )))
+
 (defun glyph-add (char ft-bitmap advance left top)
  (declare (optimize (speed 0) (safety 3) (debug 3)))
-  
  (let* ((code (char-code char))
 	(w      (ft2::ft-bitmap-width  ft-bitmap))
 	(h      (ft2::ft-bitmap-rows   ft-bitmap))
@@ -37,26 +41,25 @@
 	(buffer (ft2::ft-bitmap-buffer ft-bitmap))
 	(vgfont (vgfont *face*))  )
    (format t "~A ~A ~A ~A~&" char advance w h)
-   
-   (if (zerop h)
-       (with-vec (escapement '(7.0 0.0 )) ;;TODO: hard space, fix
-	 (with-vec (origin (list 0.0 (float (- h top))))
-	   (vg:set-glyph-to-image
-	    vgfont code
-	    0 origin escapement)))
-       (vg:with-image (vg-image
-		       vg:a-8 w h
-		       vg:image-quality-nonantialiased)
-	 (vg:image-sub-data vg-image
-			    (cffi-sys:inc-pointer  buffer (* pitch  (-  h 1))) ; last line
-			    (- 0 pitch)
-			    vg:a-8
-			    0 0 w h)
-  
-	 (with-vec (escapement '(7.0 0.0 ))
-	   (with-vec (origin (list (float (-  left)) (float (- h top))))
-	     (vg:set-glyph-to-image vgfont code vg-image origin escapement)))))))
+   (vg:with-mallocs
+       (if (zerop h)
+	   (vg:set-glyph-to-image vgfont code 0 *origin* *escapement*)
+	   (vg:with-image (vg-image
+			   vg:a-8 w h
+			   vg:image-quality-nonantialiased)
+	     (vg:image-sub-data vg-image
+				(cffi-sys:inc-pointer  buffer (* pitch  (-  h 1))) ; last line
+				(- 0 pitch)
+				vg:a-8
+				0 0 w h)
+	     
+	     (vg:set-glyph-to-image vgfont code vg-image
+					     (vg:malloc :float (list (- left ) (- h top)))
+					     *escapement*))))))
 
+
+;; Since OpenVG has no way to query if a glyph is already there,
+;; we shall keep a hashtable outside.
   
 (defun glyph-assure (ftf char)
   "Assure that the glyph for this character exists. Return vg glyph id"
@@ -92,8 +95,8 @@
        (vec (rgb-stroke	'(0.9 0.2 0.3 1.0)
 	     )))
     (background rgb-back)
-    (set-fill rgb-fill)
-    (set-stroke rgb-stroke)
+    (fill rgb-fill)
+    (stroke rgb-stroke)
     ;;    (vg:set-i vg:rendering-quality vg:quality-faster)
     (stroke-width 1.0)
     (circle 10.0 10.0 3.0)

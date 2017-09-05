@@ -6,7 +6,7 @@
 old one.  The old one is stored in the 9 floats just above the new one.
 When the body executes, the new matrix data is available, and active,
 while the old matrix data is preserved and restored on exit."
-  (let ((init-con (gensym "fuck")))
+  (let ((init-con (gensym )))
     `(let* ((,init-con ,initial-contents)
 	    (,newvar (foreign-alloc :float
 				   :initial-contents ,init-con
@@ -21,31 +21,6 @@ while the old matrix data is preserved and restored on exit."
        (vg:load-matrix (cffi-sys:inc-pointer ,newvar 36)); restore old matrix.
        (foreign-free ,newvar))))
 
-;; TODO: verify this!
-; VG matrices are in column order, but it row order is easier in text
-;; a b c         a d g
-;; d e f  VG is  b e h
-;; g h i         c f i
-(defmacro matrix (a b c
-		  d e f
-		  g h i)
-  `'(,a ,d ,g
-     ,b ,e ,h
-     ,c ,f ,i))
-
-(defun set-fill (rgba)
-  "set fill to solid rgba paint.  RGBA is a foreign array of floats"
-  (vg:with-paint (paint)
-    (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
-    (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
-    (vg:set-paint paint vg:FILL-PATH)))
-
-(defun set-stroke (rgba)
-  "set stroke to solid rgba paint."
-   (vg:with-paint (paint)
-    (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
-    (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
-    (vg:set-paint paint vg:STROKE-PATH)))
 
 (defun stroke-width (width)
   (vg:set-f vg:stroke-line-width width)
@@ -54,23 +29,12 @@ while the old matrix data is preserved and restored on exit."
 
 (defun set-stop (paint stops n)
   (vg:set-parameter-i paint vg:paint-color-ramp-spread-mode
-		      vg:color-ramp-spread-repeat)
+		      vg:color-ramp-spread-reflect)
   (vg:set-parameter-i paint vg:paint-color-ramp-premultiplied 0)
   (vg:set-parameter-fv paint vg:paint-color-ramp-stops (* 5 n)
 		       stops)
   (vg:set-paint paint vg:fill-path))
 
-(defun fill-linear-gradient (quad stops n)
-  (vg:with-paint (paint)
-    (vg:set-parameter-i paint vg:PAINT-TYPE vg:paint-type-linear-gradient )
-    (vg:set-parameter-fv paint vg:paint-linear-gradient 4 quad)
-    (set-stop paint stops n)))
-
-(defun fill-radial-gradient (radial5 stops n)
-  (vg:with-paint (paint)
-    (vg:set-parameter-i paint vg:PAINT-TYPE vg:paint-type-radial-gradient )
-    (vg:set-parameter-fv paint vg:paint-radial-gradient 5 radial5)
-    (set-stop paint stops n)))
 (defun clip-rect (xywh)
   (vg:set-i vg:scissoring 1)
   (vg:set-iv vg:scissor-rects 4 xywh))
@@ -89,12 +53,12 @@ while the old matrix data is preserved and restored on exit."
 		  vg:path-capability-append-to))
 
 (defun make-curve (segments coords flags)
-  (vg:with-path (path (new-path))
+  (let ((path (new-path))) 
     (vg:append-path-data path 2 segments coords)
     (vg:draw-path path flags)))
 
 (defun poly (points n flag)
-  (vg:with-path (path (new-path))
+  (let ((path (new-path)))
     (vgu:polygon path points n 0)
     (vg:draw-path path flag)))
 
@@ -105,22 +69,22 @@ while the old matrix data is preserved and restored on exit."
   (poly points n vg:stroke-path))
 
 (defun rect (x y w h)
-  (vg:with-path (path (new-path))
+  (let ((path (new-path)))
     (vgu:rect path x y w h)
     (vg:draw-path path (logior vg:fill-path vg:stroke-path))))
 
 (defun line (x1 y1 x2 y2)
-  (vg:with-path (path (new-path))
+  (let ((path (new-path)))
     (vgu:line path x1 y1 x2 y2)
     (vg:draw-path path  vg:stroke-path)))
 
 (defun round-rect (x y w h rw rh)
-  (vg:with-path (path (new-path))
+  (let ((path (new-path)))
     (vgu:round-rect path x y w h rw rh)
     (vg:draw-path path  (logior vg:fill-path vg:stroke-path))))
 
 (defun ellipse (x y w h)
-  (vg:with-path (path (new-path))
+  (let ((path (new-path)))
     (vgu:ellipse path x y w h)
     (vg:draw-path path  (logior vg:fill-path vg:stroke-path))
     ))
@@ -129,26 +93,132 @@ while the old matrix data is preserved and restored on exit."
   (ellipse x y r r ))
 
 (defun arc (x y w h sa aext)
-  (vg:with-path (path (new-path))
+ (let ((path (new-path)))
     (vgu:arc path x y w h sa aext vgu:arc-open)
     (vg:draw-path path  (logior vg:fill-path vg:stroke-path))))
 
+
+;;-----------------------------------------------------------------
+
+;; expands to a function that takes a colorspec, which can be
+;; any parseable representation of an RGB color, including
+;; one already in the foreign memory space.  Free temps.
+(defmacro colorspec-function (function colorspec)
+  (typecase colorspec
+    (integer
+     `(let ((colorspec (rgba ,colorspec)))
+	(,function colorspec)
+					;(foreign-free colorspec)
+		       ))
+    (cons
+     `(let ((colorspec (rgba ,@colorspec)))
+	(,function colorspec)
+		       ;(foreign-free colorspec)
+		       ))
+    (null
+     `(,function ,colorspec))
+    (t
+     `(,function ,colorspec))))
+
+;;-----------------------------------------------------------------
+(defun background-simple (foreign-rgba)
+  (vg:set-fv vg:CLEAR-COLOR 4 foreign-rgba)
+  (vg:clear 0 0 1920 1080))
+
+(defmacro background (colorspec)
+  `(colorspec-function background-simple ,colorspec ))
+
+;;-----------------------------------------------------------------
+(defun fill-simple (rgba)
+  "set fill to solid rgba paint.  RGBA is a foreign array of floats"
+  (let ((paint (vg:create-paint)))
+    (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
+    (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
+    (vg:set-paint paint vg:FILL-PATH)))
+
+(defmacro fill (colorspec)
+  `(colorspec-function fill-simple ,colorspec))
+
+(defun fill-linear-gradient (x1 y1 x2 y2 stops cnt)
+  (let ((paint (vg:create-paint)))
+    (with-vec (pts (list x1 y1 x2 y2))
+      (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-LINEAR-GRADIENT )
+      (vg:set-parameter-fv paint vg:PAINT-LINEAR-GRADIENT 4 pts)
+      ;; stops
+      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
+      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
+      (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
+      (vg:set-paint paint vg:FILL-PATH))))
+
+(defun fill-radial-gradient (cx cy fx fy r stops cnt)
+  (let ((paint (vg:create-paint)))
+    (with-vec (pts (list cx cy fx fy r))
+      (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-RADIAL-GRADIENT )
+      (vg:set-parameter-fv paint vg:PAINT-RADIAL-GRADIENT 5 pts)
+      ;; stops
+      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
+      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
+      (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
+      (vg:set-paint paint vg:FILL-PATH))
+    )
+  )
+;;-----------------------------------------------------------------
+(defun stroke-simple (rgba)
+  "set stroke to solid rgba paint."
+   (let ((paint (vg:create-paint)))
+    (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
+    (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
+    (vg:set-paint paint vg:STROKE-PATH)))
+
+(defmacro stroke (colorspec)
+  `(colorspec-function stroke-simple ,colorspec))
+
 (defun start (w h)
-  (with-vec (white '(1.0 1.0 1.0 1.0))
-    (with-vec (black '(0.0 0.0 0.0 1.0))
-      (vg:set-fv vg:clear-color 4 white)
-      (vg:clear 0 0 w h)
-      (set-fill black)
-      (set-stroke black)
-      (stroke-width 1.0 )
-      (vg:load-identity))))
+  (let ((white #{1.0 1.0 1.0 1.0})
+	(black #{0.0 0.0 0.0 1.0}))
+    (vg:set-fv vg:clear-color 4 white)
+    (vg:clear 0 0 w h)
+    (fill black)
+    (stroke black)
+    (stroke-width 1.0 )
+    (vg:load-identity)))
 
 (defun end ()
   (let ((err (vg:get-error)))
     (unless (zerop err) (error "end: error ~X" err)))
+  
   (egl::errorcheck egl:swap-buffers native::*surface*))
+;;-------------------------------------------------------
+#||
+  Paint is a construct with:
+  create   hanles
+  destroy
+  set      set in context as fill or stroke
+  get
+  set-color - rgb
+  get-color
+  pattern - image
 
-(defun background (rgba)
-  (vg:set-fv vg:CLEAR-COLOR 4 rgba)
-  (vg:clear 0 0 1920 1080))
+VG_PAINT_TYPE (color,linear,radial,pattern)    PARAMETER
+VG_PAINT_COLOR (vec4)
+VG_PAINT_COLOR_RAMP_SPREAD_MODE
+VG_PAINT_COLOR_RAMP_STOPS
+VG_PAINT_LINEAR_GRADIENT
+VG_PAINT_RADIAL_GRADIENT
+VG_PAINT_PATTERN_TILING_MODE
 
+||#
+
+
+
+(defun tito ()
+   
+  (start 1024 768)
+  (background (1.0 0.3 0.4 1.0))
+  (fill (1.0 0.5 1.0 1.0))
+  (stroke (1.0 1.0 0.0 1.0) )
+
+  (circle 512.0 0.0 1024.0)
+  (line 0.0 0.0 1024.0 768.0)
+  (end)
+)

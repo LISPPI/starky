@@ -8,7 +8,8 @@
 (defun vec-deduce-foreign-type (sequence)
   (if (floatp (elt sequence 0))
       :float
-      :int) )
+      :int))
+
 (declaim (notinline make-vec))
 (defun make-vec (initial-contents
 		 &optional type)
@@ -63,13 +64,33 @@
 	 (error "RGBA component ~A out of range" component)))
     (t (error "RGBA component ~A is not integer or float" component))))
 
-(defun rgba (&rest rest)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (declare (type list rest))
-;;  (loop for component in rest    collect (vec-rgba-component component))
-  (mapcar #'vec-rgba-component rest)
-  )
-
 ;;=================================================================
 ;; openvg commands are constants, and must be evaluated...
+
+(defun rgba-packed (val)
+  (foreign-alloc
+   :float
+   :initial-contents (list
+		     ( / (ldb (byte 8 24) val) 255.0)
+		     ( / (ldb (byte 8 16) val) 255.0)
+		     ( / (ldb (byte 8 8) val) 255.0)
+		     ( / (ldb (byte 8 0) val) 255.0))))
+(defun rgba-spy (val)
+  (print (list
+		     ( / (ldb (byte 8 24) val) 255.0)
+		     ( / (ldb (byte 8 16) val) 255.0)
+		     ( / (ldb (byte 8 8) val) 255.0)
+		     ( / (ldb (byte 8 0) val) 255.0))))
+
+(defun rgba (&rest rest)
+  "return a foreign vec of 4 rgb values, given:
+- 1 packed rgb integer value, or
+- 0, 1, 2, 3 or 4 integer or float values, with defaults."
+  (if (and (= 1  (length rest))
+	   (integerp (car rest)))
+      (rgba-packed (car rest))
+      (destructuring-bind (&optional (r 0.0) (g 0.0) (b 0.0) (a 1.0)) rest
+	(vg:malloc :float (list r g b a)))))
+
+
 
