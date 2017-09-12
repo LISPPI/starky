@@ -99,22 +99,19 @@ while the old matrix data is preserved and restored on exit."
 
 
 ;;-----------------------------------------------------------------
-
-;; expands to a function that takes a colorspec, which can be
-;; any parseable representation of an RGB color, including
+;; Functions that take a colorspec (any parseable rgb value) wrap
+;; themselves in this...
 ;; one already in the foreign memory space.  Free temps.
 (defmacro colorspec-function (function colorspec)
   (typecase colorspec
     (integer
      `(let ((colorspec (rgba ,colorspec)))
 	(,function colorspec)
-					;(foreign-free colorspec)
-		       ))
+	(foreign-free colorspec)))
     (cons
      `(let ((colorspec (rgba ,@colorspec)))
 	(,function colorspec)
-		       ;(foreign-free colorspec)
-		       ))
+	(foreign-free colorspec) ))
     (null
      `(,function ,colorspec))
     (t
@@ -174,8 +171,8 @@ while the old matrix data is preserved and restored on exit."
   `(colorspec-function stroke-simple ,colorspec))
 
 (defun start (w h)
-  (let ((white #{1.0 1.0 1.0 1.0})
-	(black #{0.0 0.0 0.0 1.0}))
+  (let ((white #{ 1.0 1.0 1.0 1.0 })
+	(black #{ 0.0 0.0 0.0 1.0 }))
     (vg:set-fv vg:clear-color 4 white)
     (vg:clear 0 0 w h)
     (fill black)

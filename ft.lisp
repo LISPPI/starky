@@ -29,8 +29,8 @@
 (eval-when (:execute :load-toplevel :compile-toplevel)
   (defparameter *glomal* (vg:make-mm))
   (vg:with-mm *glomal*
-    (defparameter *origin* #{0.0 0.0})
-    (defparameter *escapement* #{7.0 0.0}  )))
+    (defparameter *origin* #{ 0.0 0.0 })
+    (defparameter *escapement* #{ 7.0 0.0}  )))
 
 (defun glyph-add (char ft-bitmap advance left top)
 ;; (declare (optimize (speed 0) (safety 3) (debug 3)))
