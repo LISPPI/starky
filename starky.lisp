@@ -134,25 +134,27 @@ while the old matrix data is preserved and restored on exit."
 
 (defun fill-linear-gradient (x1 y1 x2 y2 stops cnt)
   (let ((paint (vg:create-paint)))
-    (with-vec (pts (list x1 y1 x2 y2))
-      (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-LINEAR-GRADIENT )
-      (vg:set-parameter-fv paint vg:PAINT-LINEAR-GRADIENT 4 pts)
+    (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-LINEAR-GRADIENT )
+    (vg:set-parameter-fv paint vg:PAINT-LINEAR-GRADIENT 4 { :float x1 y1 x2 y2} )
       ;; stops
-      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
-      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
-      (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
-      (vg:set-paint paint vg:FILL-PATH))))
+
+    (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
+    (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
+
+    (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
+    (vg:set-paint paint vg:FILL-PATH)))
 
 (defun fill-radial-gradient (cx cy fx fy r stops cnt)
   (let ((paint (vg:create-paint)))
-    (with-vec (pts (list cx cy fx fy r))
-      (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-RADIAL-GRADIENT )
-      (vg:set-parameter-fv paint vg:PAINT-RADIAL-GRADIENT 5 pts)
+    (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-RADIAL-GRADIENT )
+    (vg:set-parameter-fv paint vg:PAINT-RADIAL-GRADIENT 5 { :float cx cy fx fy r })
       ;; stops
-      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
-      (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
-      (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
-      (vg:set-paint paint vg:FILL-PATH))
+
+    (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
+    (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
+
+    (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
+    (vg:set-paint paint vg:FILL-PATH)
     )
   )
 ;;-----------------------------------------------------------------

@@ -11,7 +11,7 @@
     ((ftf ft-face)  &key file sizex (sizey sizex) (ppix 72) (ppiy 72))
   (with-slots (face vgfont) ftf
     (setf face   (ft2:new-face file)
-	  vgfont (vg:create-font 0))
+	  vgfont (vg:create-font 0 :anon t)) ;do not track font handle
     (ft2:set-char-size face  sizex sizey ppix ppiy)))
 
 (defmethod free ((obj ft-face))
@@ -39,31 +39,28 @@
 	(h      (ft2::ft-bitmap-rows   ft-bitmap))
 	(pitch  (ft2::ft-bitmap-pitch  ft-bitmap))
 	(buffer (ft2::ft-bitmap-buffer ft-bitmap))
-	(vgfont (vgfont *face*))  )
+	(vgfont (vgfont *face*))  ) ;; need that handle...
    (format t "~A ~A ~A ~A~&" char advance w h) (force-output)
  
    (if (zerop h)
        (vg:set-glyph-to-image vgfont code 0 *origin* *escapement*)
-       (vg:with-image (vg-image
-		       vg:a-8 w h
-		       vg:image-quality-nonantialiased)
+       (let ((vg-image (vg:create-image vg:a-8 w h vg:image-quality-nonantialiased)))
+	 
 	 (vg:image-sub-data vg-image
 			    (cffi-sys:inc-pointer  buffer (* pitch  (-  h 1))) ; last line
 			    (- 0 pitch)
 			    vg:a-8
 			    0 0 w h)
-	 (let ((origin (cffi:foreign-alloc
-			:float :initial-contents (list  (float (- left ))
-							(float (- h top)))) ))
-	   (vg:set-glyph-to-image vgfont code vg-image
-				  origin
-				  *escapement*)
-	   (cffi:foreign-free origin))))))
+	 ;; The vector below is calculated origin, accounting for invertedness
+	 (vg:set-glyph-to-image vgfont code vg-image
+				{ :float  (float (- left))  (float (- h top)) }
+				*escapement*))))
 
 
-;; Since OpenVG has no way to query if a glyph is already there,
-;; we shall keep a hashtable outside.
-  
+ ;; Since OpenVG has no way to query if a glyph is already there,
+ ;; we shall keep a hashtable outside.
+)
+ 
 (defun glyph-assure (ftf char)
   "Assure that the glyph for this character exists. Return vg glyph id"
   (unless (gethash char (cache ftf))
@@ -142,7 +139,7 @@
       (vg:set-i vg:image-mode vg:draw-image-stencil)
       (text "The xxx \\ quick brown fox Jumps over the lazy dog"  vg:fill-path  )))
   ;;    (vg:draw-glyph *vgfont* (char-code #\g) (+ vg:stroke-path vg:fill-path) 0 )
-  
+  (vg:handles-free)
   )
 
 (defun tin ()
