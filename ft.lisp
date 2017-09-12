@@ -29,8 +29,8 @@
 (eval-when (:execute :load-toplevel :compile-toplevel)
   (defparameter *glomal* (vg:make-mm))
   (vg:with-mm *glomal*
-    (defparameter *origin* #{ 0.0 0.0 })
-    (defparameter *escapement* #{ 7.0 0.0}  )))
+    (defparameter *origin* { 0.0 0.0 })
+    (defparameter *escapement* { 7.0 0.0}  )))
 
 (defun glyph-add (char ft-bitmap advance left top)
 ;; (declare (optimize (speed 0) (safety 3) (debug 3)))
@@ -90,7 +90,7 @@
 
 
 
-(defun work ()
+(defun work1 () ;this one works
  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (with:all
       ((vec (rgb-back '(0.0 0.0 0.0 1.0)))	
@@ -115,7 +115,35 @@
   )
 ;;(defun work ())
 
+(defun work ()
+ ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
+;;
 
+      #||      ((vec (rgb-back '(0.0 0.0 0.0 1.0)))	
+      (vec (rgb-fill '(1.0 1.0 0.0 1.0)))
+      (vec (rgb-stroke	'(0.9 0.2 0.3 1.0))))
+      ||#
+  (vg:with-mallocs
+    (let ((rgb-back   (vg:rgba))
+	  (rgb-fill   (vg:rgba 0.5 1.0))
+	  (rgb-stroke (vg:rgba 0.9 0.2 0.3))
+	  (origin     { 100.0 520.0 }))
+      
+      (background rgb-back)
+      (fill rgb-fill)
+      (stroke rgb-stroke)
+      ;;    (vg:set-i vg:rendering-quality vg:quality-faster)
+      (stroke-width 1.0)
+      (circle 10.0 10.0 3.0)
+      (stroke-width 5.0)
+      (circle 500.0 100.0 500.0  )
+      ;;    (text 100.0 505.0 "The xxx \\ quick brown fox Jumps over the lazy dog" *font* 8.8)
+      (vg:set-fv vg:glyph-origin 2 origin)
+      (vg:set-i vg:image-mode vg:draw-image-stencil)
+      (text "The xxx \\ quick brown fox Jumps over the lazy dog"  vg:fill-path  )))
+  ;;    (vg:draw-glyph *vgfont* (char-code #\g) (+ vg:stroke-path vg:fill-path) 0 )
+  
+  )
 
 (defun tin ()
   (native::init :api egl:openvg-api)

@@ -102,7 +102,7 @@ while the old matrix data is preserved and restored on exit."
 ;; Functions that take a colorspec (any parseable rgb value) wrap
 ;; themselves in this...
 ;; one already in the foreign memory space.  Free temps.
-(defmacro colorspec-function (function colorspec)
+#||(defmacro colorspec-function (function colorspec)
   (typecase colorspec
     (integer
      `(let ((colorspec (rgba ,colorspec)))
@@ -116,25 +116,21 @@ while the old matrix data is preserved and restored on exit."
      `(,function ,colorspec))
     (t
      `(,function ,colorspec))))
-
+||#
 ;;-----------------------------------------------------------------
-(defun background-simple (foreign-rgba)
+(defun background (foreign-rgba)
   (vg:set-fv vg:CLEAR-COLOR 4 foreign-rgba)
   (vg:clear 0 0 1920 1080))
 
-(defmacro background (colorspec)
-  `(colorspec-function background-simple ,colorspec ))
 
 ;;-----------------------------------------------------------------
-(defun fill-simple (rgba)
+(defun fill (rgba)
   "set fill to solid rgba paint.  RGBA is a foreign array of floats"
   (let ((paint (vg:create-paint)))
     (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
     (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
     (vg:set-paint paint vg:FILL-PATH)))
 
-(defmacro fill (colorspec)
-  `(colorspec-function fill-simple ,colorspec))
 
 (defun fill-linear-gradient (x1 y1 x2 y2 stops cnt)
   (let ((paint (vg:create-paint)))
@@ -160,19 +156,17 @@ while the old matrix data is preserved and restored on exit."
     )
   )
 ;;-----------------------------------------------------------------
-(defun stroke-simple (rgba)
+(defun stroke (rgba)
   "set stroke to solid rgba paint."
    (let ((paint (vg:create-paint)))
     (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-COLOR )
     (vg:set-parameter-fv paint vg:PAINT-COLOR 4 rgba)
     (vg:set-paint paint vg:STROKE-PATH)))
 
-(defmacro stroke (colorspec)
-  `(colorspec-function stroke-simple ,colorspec))
 
 (defun start (w h)
-  (let ((white #{ 1.0 1.0 1.0 1.0 })
-	(black #{ 0.0 0.0 0.0 1.0 }))
+  (let ((white (vg:rgba #xFFFFFFFF))
+	(black (vg:rgba #x000000FF)))
     (vg:set-fv vg:clear-color 4 white)
     (vg:clear 0 0 w h)
     (fill black)
@@ -211,9 +205,9 @@ VG_PAINT_PATTERN_TILING_MODE
 (defun tito ()
    
   (start 1024 768)
-  (background (1.0 0.3 0.4 1.0))
-  (fill (1.0 0.5 1.0 1.0))
-  (stroke (1.0 1.0 0.0 1.0) )
+  (background (vg:rgba 1.0 0.3 0.4 1.0))
+  (fill (vg:rgba 1.0 0.5 1.0 1.0))
+  (stroke (vg:rgba 1.0 1.0 0.0 1.0) )
 
   (circle 512.0 0.0 1024.0)
   (line 0.0 0.0 1024.0 768.0)
