@@ -33,29 +33,32 @@
     (defparameter *escapement* #{7.0 0.0}  )))
 
 (defun glyph-add (char ft-bitmap advance left top)
- (declare (optimize (speed 0) (safety 3) (debug 3)))
+;; (declare (optimize (speed 0) (safety 3) (debug 3)))
  (let* ((code (char-code char))
 	(w      (ft2::ft-bitmap-width  ft-bitmap))
 	(h      (ft2::ft-bitmap-rows   ft-bitmap))
 	(pitch  (ft2::ft-bitmap-pitch  ft-bitmap))
 	(buffer (ft2::ft-bitmap-buffer ft-bitmap))
 	(vgfont (vgfont *face*))  )
-   (format t "~A ~A ~A ~A~&" char advance w h)
-   (vg:with-mallocs
-       (if (zerop h)
-	   (vg:set-glyph-to-image vgfont code 0 *origin* *escapement*)
-	   (vg:with-image (vg-image
-			   vg:a-8 w h
-			   vg:image-quality-nonantialiased)
-	     (vg:image-sub-data vg-image
-				(cffi-sys:inc-pointer  buffer (* pitch  (-  h 1))) ; last line
-				(- 0 pitch)
-				vg:a-8
-				0 0 w h)
-	     
-	     (vg:set-glyph-to-image vgfont code vg-image
-					     (vg:malloc :float (list (- left ) (- h top)))
-					     *escapement*))))))
+   (format t "~A ~A ~A ~A~&" char advance w h) (force-output)
+ 
+   (if (zerop h)
+       (vg:set-glyph-to-image vgfont code 0 *origin* *escapement*)
+       (vg:with-image (vg-image
+		       vg:a-8 w h
+		       vg:image-quality-nonantialiased)
+	 (vg:image-sub-data vg-image
+			    (cffi-sys:inc-pointer  buffer (* pitch  (-  h 1))) ; last line
+			    (- 0 pitch)
+			    vg:a-8
+			    0 0 w h)
+	 (let ((origin (cffi:foreign-alloc
+			:float :initial-contents (list  (float (- left ))
+							(float (- h top)))) ))
+	   (vg:set-glyph-to-image vgfont code vg-image
+				  origin
+				  *escapement*)
+	   (cffi:foreign-free origin))))))
 
 
 ;; Since OpenVG has no way to query if a glyph is already there,
