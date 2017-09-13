@@ -112,19 +112,19 @@
 ;; a state-machiney way to fill the buffer
 ;;=============================================================================
 (defclass tb ()
-  (;; the buffer contains the 24x80 or whatever screen space.
-   (width :accessor width :initform 80 :initarg :width)
-   (height :accessor height :initform 24 :initarg :height)
+  (;; 
+   (columns :accessor columns :initform 80 :initarg :columns)
+   (rows :accessor rows :initform 24 :initarg :rows)
    (buffer :accessor buffer :initform nil)
    (linex :accessor linex :initform nil)
    (face :accessor face :initform *face*)) ;;TODO: decouple font cache
   )
 
 (defmethod initialize-instance :after ((tb tb)&key)
-  (with-slots (width height buffer linex) tb
+  (with-slots (columns rows buffer linex) tb
     (setf buffer (cffi:foreign-alloc
-		  :uint  :count (* width height) :initial-element 32)
-	  linex (make-array height :fill-pointer 0))))
+		  :uint  :count (* columns rows) :initial-element 32)
+	  linex (make-array rows :fill-pointer 0))))
 
 (defparameter *t* (make-instance 'tb))
 ;;=============================================================================
@@ -133,10 +133,10 @@
 (defun tb-set (tb text)
   "set text and initialize internal structures"
   (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (with-slots (width height buffer linex) tb
+  (with-slots (columns rows buffer linex) tb
     (setf (fill-pointer linex) 0)
     (loop 
-       for offset fixnum from 0 below  (* 4  width height) by 4
+       for offset fixnum from 0 below  (* 4  columns rows) by 4
        for len fixnum = 0 then (1+ len)
        for c character across text
        for code = (char-code c)
@@ -146,7 +146,7 @@
 	   (vector-push len linex)
 	   (setf len 0))
 	 (setf (mem-ref buffer :uint offset) code)
-	 (setf wrap (or (= len (1- width))
+	 (setf wrap (or (= len (1- columns))
 			(char= c #\newline))))))
 ;;=============================================================================
 (defun tb-render (tb)
@@ -208,10 +208,14 @@
       (text "The xxx \\ quick brown fox Jumps over the lazy dog VV "  )
     ;;  (vg:set-fv vg:glyph-origin 2 {100.0 536.0})
       ;;  (textline)
+      (fill rgb-back)
+      (frame-render *frame*)
+      (fill rgb-fill)
       (time (progn
 	      (tb-render *t*)
-	   ;;   (tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)
+	      ;;   (tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)
 	      ))
+
 ;;      (time (progn	      (text-dump 80  *text*  )      ))
       ))
   ;;    (vg:draw-glyph *vgfont* (char-code #\g) (+ vg:stroke-path vg:fill-path) 0 )
@@ -256,99 +260,25 @@ The paintModes parameter controls how glyphs are rendered. If paintModes is 0, n
 When the allowAutoHinting flag is set to VG_FALSE, rendering occurs without hinting. If allowAutoHinting is equal to VG_TRUE, autohinting may be optionally applied to alter the glyph outlines slightly for better rendering
 quality. In this case, the escapement values will be adjusted to match the effects of hinting.")
 
-#||
-;;-----------------------------------------------------------------------------
-;; preliminary test for a text blaster, wrapping occasionally.
-(defun text-dump (wid text)
-  (let ((origin {100.0 1000.0}))
-    (vg:set-fv vg:glyph-origin 2 origin)
-    (loop for char across text 
-       for x from 0
-       when (or (char= char #\newline)
-		(> x 81))
-       do
-	 (setf x 0)
-	 (decf (cffi:mem-ref origin :float 4) 16.0)
-	 (vg:set-fv vg:glyph-origin 2 origin)
-       end
-       do
-	 (unless (char= char #\newline)
-	   (glyph-assure *face* char)
-	   (vg:draw-glyph (vgfont *face*) (char-code char) vg:fill-path 0 )
-	   )
-	 )))
-(defparameter tbuffer  (cffi:foreign-alloc :uint :count (* 24 80) :initial-element 32))
-(defparameter tlen (make-array 24 :initial-element 0 :fill-pointer 0))
-;;=============================================================================
-;; Copy text into foreign memory as uint-per-char; build length table
-;; for display.
-(defun tbcopy (text)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (setf (fill-pointer tlen) 0)
-  (loop for c character across text
-       for code = (char-code c)
-     for offset fixnum from 0 below  (* 4  2048) by 4
-     for len fixnum = 0 then (1+ len)
-     do
-       (setf (mem-ref tbuffer :uint offset) code)
-       (when (or (= len 80)
-		 (char= c #\newline))
-	 (vector-push  len tlen)
-	 (setf len 0)
-	 )))
 
-#||
-(defun tbcopy (text)
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (loop for c across text
-     for offset from 0 below (* 4 2048) by 4
-     for len = 0 then (1+ len)
-     do
-       (setf (mem-ref tbuffer :uint offset) (char-code c))
-       
-     if (or (> len 79)
-	      (char= c #\newline))
-     collect (shiftf len 0) into list
-       
-     finally (return list)))
-||#
-;;------------------------------------------------------------------------------------
-(defun tbshow ()
-  (let ((origin {100.0 1000.0})
-	(offset 0))
-    (loop for len across tlen do
-	 (unless (zerop len)
-	   (vg:set-fv vg:glyph-origin 2 origin)
-	;;   (format t "~&~A ~A |~A|" len offset (subseq *text* offset (+ offset len) ) )
-	   (vg:draw-glyphs
-	    (vgfont *face*) len
-	    (cffi:inc-pointer tbuffer (* 4 offset))
-	    (cffi:null-pointer)
-	    (cffi:null-pointer)
-	    vg:fill-path 0))
-;;	 (format t "~&ERROR ~A" (vg:get-error))
-	 (incf offset len)
-	 (decf (cffi:mem-ref origin :float 4) 16.0)))
+
+(defclass frame ()
+  ((x :accessor x :initform 100.0 :initarg :x)
+   (y :accessor y :initform 500.0 :initarg :y)
+   (w :accessor w :initform 500.0 :initarg :w)
+   (h :accessor h :initform 400.0 :initarg :h))
   )
-
-
-
-(defun textline ()
-  (let ((origin {100.0 1000.0}))
-    (vg:set-fv vg:glyph-origin 2 origin)
-    (vg:draw-glyphs
-     (vgfont *face*)
-     10
-     { :uint  102  117   99   107   32  121  111  117  114 115}
-     { :float 0.0  -5.0  0.0  0.0  0.0  0.0  0.0  0.0 0.0 0.0}  
-   
-     (cffi:null-pointer)
-     vg:fill-path 0))
-
-  )
-
-
-
-
-
-||#
+(defparameter *frame* (make-instance 'frame))
+(defun frame-render (frame)
+  (with-slots (x y w h) frame
+    (let ((path (new-path)))
+      (vgu:&round-rect path x y w h 10.0 20.0)
+      (vg:draw-path path  (logior vg:fill-path vg:stroke-path))
+      )
+    (stroke-width 5.0)
+))
+(with-slots (x y w h) *frame*
+  (setf x 100.0
+	y 500.0
+	w 600.0
+	h 400.0))
