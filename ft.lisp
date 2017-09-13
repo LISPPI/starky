@@ -54,37 +54,40 @@
 ;; dimensional data in it.  
 (defun glyph-add (char ft-bitmap advance left top)
   
-;; (declare (optimize (speed 0) (safety 3) (debug 3)))
- (let* ((code (char-code char))
-	(w      (ft2::ft-bitmap-width  ft-bitmap))
-	(h      (ft2::ft-bitmap-rows   ft-bitmap))
-	(pitch  (ft2::ft-bitmap-pitch  ft-bitmap))
-	(buffer (ft2::ft-bitmap-buffer ft-bitmap))
-	(vgfont (vgfont *face*))
-	(escapement { :float advance 0.0 }  ))
-;;      (format t "~A ~A ~A ~A~&" char advance w h) (force-output)
-   
-    (if (zerop h);bitmap 0 height, space? fake it (TODO: fix)
-       (vg:set-glyph-to-image vgfont code 0 *origin* escapement)
-       ;;-----------------------------------------------------------------------
-       ;; Create an 8-bit alpha-only bitmap to render into
-       (let ((vg-image (vg:create-image vg:a-8 w h
-					vg:image-quality-nonantialiased
-					)))
-	 ;;render upside-down (negative pitch), since vg coords are upside down.
-#||	 (vg:image-sub-data
+  ;; (declare (optimize (speed 0) (safety 3) (debug 3)))
+  ;; TODO: come back to memory management.  Statics are useful here
+  (vg:with-mallocs
+    (let* ((code (char-code char))
+	   (w      (ft2::ft-bitmap-width  ft-bitmap))
+	   (h      (ft2::ft-bitmap-rows   ft-bitmap))
+	   (pitch  (ft2::ft-bitmap-pitch  ft-bitmap))
+	   (buffer (ft2::ft-bitmap-buffer ft-bitmap))
+	   (vgfont (vgfont *face*))
+	   (escapement { :float advance 0.0 }  ))
+      ;;      (format t "~A ~A ~A ~A~&" char advance w h) (force-output)
+      
+      (if (zerop h)	  ;bitmap 0 height, space? fake it (TODO: fix)
+	  (vg:set-glyph-to-image vgfont code 0 *origin* escapement)
+	  ;;-----------------------------------------------------------------------
+	  ;; Create an 8-bit alpha-only bitmap to render into
+	  (let ((vg-image (vg:create-image vg:a-8 w h
+					   vg:image-quality-nonantialiased
+					   )))
+	    (vg:image-sub-data vg-image buffer pitch vg:a-8  0 0 w h)
+	    (vg:set-glyph-to-image vgfont code vg-image
+				   { :float  (float (- left))  (float   top ) }
+				   escapement))))))
+
+#||	 ;;render upside-down (negative pitch), since vg coords are upside down.
+	 ;; The vector below is calculated origin, accounting for invertedness
+;; So, we now create an image-based glyph with our bitmap
+(vg:image-sub-data
 	  vg-image
 	  (cffi-sys:inc-pointer  buffer (* pitch  (-  h 1)));; last line...
 	  (- 0 pitch)
 	  vg:a-8 ;; wtf?
-	  0 0 w h)||#
-	 (vg:image-sub-data vg-image buffer pitch vg:a-8  0 0 w h)
-	 ;; The vector below is calculated origin, accounting for invertedness
-	 ;; So, we now create an image-based glyph with our bitmap
-	 (vg:set-glyph-to-image vgfont code vg-image
-				{ :float  (float (- left))  (float   top ) }
-;;upside down		(float (- left))  (float (- h top)) }
-				escapement)))))
+	  0 0 w h)
+||#
 ;;------------------------------------------------------------------------------
 ;; Check if glyph is present.  If
 (defun glyph-assure (ftf char)
@@ -178,6 +181,7 @@
   (setf (face tb) *face*)
   (tb-cachefy-glyphs tb)
   (tb-set tb *text*)
+  (work-matrix)
   )
 ;;(defun work ())
 
@@ -232,12 +236,8 @@
     ;;  (vg:set-fv vg:glyph-origin 2 {100.0 536.0})
       ;;  (textline)
       (fill rgb-back)
-      (frame-render *frame*)
       (fill rgb-fill)
-      (time (progn
-	     
-	      ;;   (tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)
-	      ))
+      (frame-render *frame*)
 
 ;;      (time (progn	      (text-dump 80  *text*  )      ))
       ))
@@ -289,27 +289,31 @@ quality. In this case, the escapement values will be adjusted to match the effec
   ((x :accessor x :initform 100.0 :initarg :x)
    (y :accessor y :initform 500.0 :initarg :y)
    (w :accessor w :initform 500.0 :initarg :w)
-   (h :accessor h :initform 400.0 :initarg :h))
+   (h :accessor h :initform 400.0 :initarg :h)
+   (payload :accessor payload :initarg :payload))
   )
-(defparameter *frame* (make-instance 'frame))
+
+(defparameter *frame* (make-instance 'frame :payload *t*))
+
 (defun frame-render (frame)
   (with-slots (x y w h) frame
-
+    (fill  (vg:rgba))
     (stroke-width 1.0)
     (let ((path (new-path)))
       (vgu:&round-rect path x y w h 10.0 20.0)
       (vg:draw-path path  (logior vg:fill-path vg:stroke-path)))
 
     (vg:set-i vg:matrix-mode   vg:matrix-glyph-user-to-surface)  ;;vg:matrix-fill-paint-to-user
-     ;;   (vg:translate x y)
-   ;;  (vg:load-identity)
-  
-    (fill (rgba #xFFFFFF))
-    (tb-render *t*)
-    
-))
+    (with-saved-matrix
+      (vg:translate (+ x 5.0) y)
+      (fill (rgba #xFFFFFF))
+      (tb-render *t*))))
+
+
 (with-slots (x y w h) *frame*
-  (setf x 100.0
+  (setf x 200.0
 	y 100.0
 	w 600.0
 	h 400.0))
+
+
