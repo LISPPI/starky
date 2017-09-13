@@ -72,16 +72,18 @@
 					vg:image-quality-nonantialiased
 					)))
 	 ;;render upside-down (negative pitch), since vg coords are upside down.
-	 (vg:image-sub-data
+#||	 (vg:image-sub-data
 	  vg-image
 	  (cffi-sys:inc-pointer  buffer (* pitch  (-  h 1)));; last line...
 	  (- 0 pitch)
 	  vg:a-8 ;; wtf?
-	  0 0 w h)
+	  0 0 w h)||#
+	 (vg:image-sub-data vg-image buffer pitch vg:a-8  0 0 w h)
 	 ;; The vector below is calculated origin, accounting for invertedness
 	 ;; So, we now create an image-based glyph with our bitmap
 	 (vg:set-glyph-to-image vgfont code vg-image
-				{ :float  (float (- left))  (float (- h top)) }
+				{ :float  (float (- left))  (float   top ) }
+;;upside down		(float (- left))  (float (- h top)) }
 				escapement)))))
 ;;------------------------------------------------------------------------------
 ;; Check if glyph is present.  If
@@ -150,7 +152,7 @@
 			(char= c #\newline))))))
 ;;=============================================================================
 (defun tb-render (tb)
-  (let ((origin {100.0 1000.0})
+  (let ((origin {0.0 16.0})
 	(offset 0))
     (with-slots ( buffer face linex) tb
       (loop for len across linex do ;a single line length;
@@ -165,7 +167,7 @@
 	      vg:fill-path 0))
 ;;	 (format t "~&ERROR ~A" (vg:get-error))
 	   (incf offset len)
-	   (decf (cffi:mem-ref origin :float 4) 16.0); origin down
+	   (incf (cffi:mem-ref origin :float 4) 16.0); origin down
 	   ))) )
 
 (defun tb-cachefy-glyphs (tb)
@@ -179,6 +181,27 @@
   )
 ;;(defun work ())
 
+(defun work-matrix ()
+      (vg:set-i vg:matrix-mode   vg:matrix-glyph-user-to-surface)  ;;vg:matrix-fill-paint-to-user
+      (vg:load-identity)
+      (vg:scale 1.0 -1.0)
+      (vg:translate 0.0 -1080.0)
+
+      (vg:set-i vg:matrix-mode   vg:matrix-path-user-to-surface)  ;;vg:matrix-fill-paint-to-user
+      (vg:load-identity)
+      (vg:scale 1.0 -1.0)
+      (vg:translate 0.0 -1080.0)
+
+      (vg:set-i vg:matrix-mode   vg:matrix-fill-paint-to-user)  ;;vg:matrix-fill-paint-to-user
+      (vg:load-identity)
+      (vg:scale 1.0 -1.0)
+      (vg:translate 0.0 -1080.0)
+
+      (vg:set-i vg:matrix-mode   vg:matrix-stroke-paint-to-user)  ;;vg:matrix-fill-paint-to-user
+      (vg:load-identity)
+      (vg:scale 1.0 -1.0)
+      (vg:translate 0.0 -1080.0)
+  )
 (defun work ()
  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
 ;;
@@ -193,7 +216,7 @@
 	  (rgb-stroke (vg:rgba 0.9 0.2 0.3))
 ;;	  (origin     { 100.0 520.0 })
 	  )
-      
+
       (background rgb-back)
       (fill rgb-fill)
       (stroke rgb-stroke)
@@ -204,15 +227,15 @@
       (circle 500.0 100.0 500.0  )
       ;;    (text 100.0 505.0 "The xxx \\ quick brown fox Jumps over the lazy dog" *font* 8.8)
       (vg:set-i vg:image-mode vg:draw-image-stencil)
-      (vg:set-fv vg:glyph-origin 2 {50.0 520.0})
-      (text "The xxx \\ quick brown fox Jumps over the lazy dog VV "  )
+      (vg:set-fv vg:glyph-origin 2 {0.0 16.0})
+    ;;  (text "The xxx \\ quick brown fox Jumps over the lazy dog VV "  )
     ;;  (vg:set-fv vg:glyph-origin 2 {100.0 536.0})
       ;;  (textline)
       (fill rgb-back)
       (frame-render *frame*)
       (fill rgb-fill)
       (time (progn
-	      (tb-render *t*)
+	     
 	      ;;   (tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)(tbshow)
 	      ))
 
@@ -271,14 +294,22 @@ quality. In this case, the escapement values will be adjusted to match the effec
 (defparameter *frame* (make-instance 'frame))
 (defun frame-render (frame)
   (with-slots (x y w h) frame
+
+    (stroke-width 1.0)
     (let ((path (new-path)))
       (vgu:&round-rect path x y w h 10.0 20.0)
-      (vg:draw-path path  (logior vg:fill-path vg:stroke-path))
-      )
-    (stroke-width 5.0)
+      (vg:draw-path path  (logior vg:fill-path vg:stroke-path)))
+
+    (vg:set-i vg:matrix-mode   vg:matrix-glyph-user-to-surface)  ;;vg:matrix-fill-paint-to-user
+     ;;   (vg:translate x y)
+   ;;  (vg:load-identity)
+  
+    (fill (rgba #xFFFFFF))
+    (tb-render *t*)
+    
 ))
 (with-slots (x y w h) *frame*
   (setf x 100.0
-	y 500.0
+	y 100.0
 	w 600.0
 	h 400.0))
