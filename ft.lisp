@@ -112,79 +112,8 @@
        (glyph-assure *face* char)
        (vg:draw-glyph (vgfont *face*) (char-code char) mode 0 )))
 
-;; a line-mode output
 
-;; a state-machiney way to fill the buffer
-;;=============================================================================
-(defclass tb ()
-  (;; 
-   (columns :accessor columns :initform 80 :initarg :columns)
-   (rows :accessor rows :initform 24 :initarg :rows)
-   (buffer :accessor buffer :initform nil)
-   (linex :accessor linex :initform nil)
-   (face :accessor face :initform *face*)) ;;TODO: decouple font cache
-  )
-
-(defmethod initialize-instance :after ((tb tb)&key)
-  (with-slots (columns rows buffer linex) tb
-    (setf buffer (cffi:foreign-alloc
-		  :uint  :count (* columns rows) :initial-element 32)
-	  linex (make-array rows :fill-pointer 0))))
-
-(defparameter *t* (make-instance 'tb))
-;;=============================================================================
-;; Set new text into the buffer, break lines, generate line offsets.
-;; Note: convoluted because cr needs to be included into the line...
-(defun tb-set (tb text)
-  "set text and initialize internal structures"
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
-  (with-slots (columns rows buffer linex) tb
-    (setf (fill-pointer linex) 0)
-    (loop 
-       for offset fixnum from 0 below  (* 4  columns rows) by 4
-       for len fixnum = 0 then (1+ len)
-       for c character across text
-       for code = (char-code c)
-       with wrap = nil
-       do
-	 (when wrap
-	   (vector-push len linex)
-	   (setf len 0))
-	 (setf (mem-ref buffer :uint offset) code)
-	 (setf wrap (or (= len (1- columns))
-			(char= c #\newline))))))
-;;=============================================================================
-(defun tb-render (tb)
-  (let ((origin {0.0 16.0})
-	(offset 0))
-    (with-slots ( buffer face linex) tb
-      (loop for len across linex do ;a single line length;
-	   (unless (zerop len)
-	     (vg:set-fv vg:glyph-origin 2 origin)
-	     ;;       (format t "~&~A ~A |~A|" len offset (subseq *text* offset (+ offset len) ) )
-	     (vg:draw-glyphs
-	      (vgfont face) len
-	      (cffi:inc-pointer buffer (* 4 offset))
-	      (cffi:null-pointer)
-	      (cffi:null-pointer)
-	      vg:fill-path 0))
-;;	 (format t "~&ERROR ~A" (vg:get-error))
-	   (incf offset len)
-	   (incf (cffi:mem-ref origin :float 4) 16.0); origin down
-	   ))) )
-
-(defun tb-cachefy-glyphs (tb)
-  (loop for i from 0 to 127
-     do (glyph-assure *face* (code-char i))))
-
-(defun tb-prep (tb)
-  (setf (face tb) *face*)
-  (tb-cachefy-glyphs tb)
-  (tb-set tb *text*)
-  (work-matrix)
-  )
-;;(defun work ())
-
+;; These turn OpenVG display upside down, for a more normal upper-left-corner 0 experience.
 (defun work-matrix ()
       (vg:set-i vg:matrix-mode   vg:matrix-glyph-user-to-surface)  ;;vg:matrix-fill-paint-to-user
       (vg:load-identity)
@@ -205,7 +134,12 @@
       (vg:load-identity)
       (vg:scale 1.0 -1.0)
       (vg:translate 0.0 -1080.0)
-  )
+      )
+
+(defparameter *stops*
+  {0.0  0.15882353 0.2137255 0.16862746 1.0 
+  0.5  0.10392157 0.1372549 0.2254902  1.0 
+  1.0  0.11764706 0.1882353 0.19607843 1.0 })
 (defun work ()
  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
 ;;
@@ -221,7 +155,10 @@
 ;;	  (origin     { 100.0 520.0 })
 	  )
 
-      (background rgb-back)
+      ;; linear gradient
+      (fill-linear-gradient 100.0 200.0  1200.0 900.0 *stops* 3 )
+      (starky::rect 0.0 0.0 1920.0 1080.0)
+;;      (background rgb-back)
       (fill rgb-fill)
       (stroke rgb-stroke)
       ;;    (vg:set-i vg:rendering-quality vg:quality-faster)
@@ -237,7 +174,7 @@
       ;;  (textline)
       (fill rgb-back)
       (fill rgb-fill)
-      (frame-render *frame*)
+      (render *frame*)
 
 ;;      (time (progn	      (text-dump 80  *text*  )      ))
       ))
@@ -264,7 +201,7 @@
 (defun ttt ()
   ;; background
   (work)
-  (print (vg:get-error)) (force-output)
+ ;; (print (vg:get-error)) (force-output)
 ;;  (vg:set-i vg:rendering-quality vg:quality-better)
   (vg:flush)
   (egl:swap-buffers native::*surface*)
@@ -283,37 +220,4 @@ The paintModes parameter controls how glyphs are rendered. If paintModes is 0, n
 When the allowAutoHinting flag is set to VG_FALSE, rendering occurs without hinting. If allowAutoHinting is equal to VG_TRUE, autohinting may be optionally applied to alter the glyph outlines slightly for better rendering
 quality. In this case, the escapement values will be adjusted to match the effects of hinting.")
 
-
-
-(defclass frame ()
-  ((x :accessor x :initform 100.0 :initarg :x)
-   (y :accessor y :initform 500.0 :initarg :y)
-   (w :accessor w :initform 500.0 :initarg :w)
-   (h :accessor h :initform 400.0 :initarg :h)
-   (payload :accessor payload :initarg :payload))
-  )
-
-(defparameter *frame* (make-instance 'frame :payload *t*))
-
-(defun frame-render (frame)
-  (with-slots (x y w h) frame
-    (fill  (vg:rgba))
-    (stroke-width 1.0)
-    (let ((path (new-path)))
-      (vgu:&round-rect path x y w h 10.0 20.0)
-      (vg:draw-path path  (logior vg:fill-path vg:stroke-path)))
-
-    (vg:set-i vg:matrix-mode   vg:matrix-glyph-user-to-surface)  ;;vg:matrix-fill-paint-to-user
-    (with-saved-matrix
-      (vg:translate (+ x 5.0) y)
-      (fill (rgba #xFFFFFF))
-      (tb-render *t*))))
-
-
-(with-slots (x y w h) *frame*
-  (setf x 200.0
-	y 100.0
-	w 600.0
-	h 400.0))
-
-
+(defparameter *frame* nil) ;!!!

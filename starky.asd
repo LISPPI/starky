@@ -18,6 +18,8 @@
 	       ;;	       (:file "dejavu-sans-mono")
 
 	       (:file "ft")
+	       (:file "ui/tb")
+	       (:file "ui/frame")
 
 ;;	       (:file "test")
 	       ))
