@@ -2,7 +2,7 @@
 
 (defpackage #:starky
   (:nicknames )
-  (:use #:cffi #:cl)
+  (:use  #:cffi #:cl)
   (:shadow #:fill)
   (:export)
   )

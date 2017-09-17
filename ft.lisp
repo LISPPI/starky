@@ -45,18 +45,16 @@
 
 
 ;; Some parameters.  TODO: fix escapement to go with font.
-(eval-when (:execute :load-toplevel :compile-toplevel)
-  (defparameter *glomal* (vg:make-mm))
-  (vg:with-mm *glomal*
-    (defparameter *origin* { 0.0 0.0 })))
+
 ;;------------------------------------------------------------------------------
 ;; Add a char glyph to vg font.  The bitmap produced by FreetType2 has much
-;; dimensional data in it.  
+;; dimensional data in it.
+(defparameter *origin* {0.0 0.0})
 (defun glyph-add (char ft-bitmap advance left top)
   
   ;; (declare (optimize (speed 0) (safety 3) (debug 3)))
   ;; TODO: come back to memory management.  Statics are useful here
-  (vg:with-mallocs
+  (malloc:with
     (let* ((code (char-code char))
 	   (w      (ft2::ft-bitmap-width  ft-bitmap))
 	   (h      (ft2::ft-bitmap-rows   ft-bitmap))
@@ -69,7 +67,7 @@
       (if (zerop h)	  ;bitmap 0 height, space? fake it (TODO: fix)
 	  (vg:set-glyph-to-image vgfont code 0 *origin* escapement)
 	  ;;-----------------------------------------------------------------------
-	  ;; Create an 8-bit alpha-only bitmap to render into
+	  ;; Creaate an 8-bit alpha-only bitmap to render into
 	  (let ((vg-image (vg:create-image vg:a-8 w h
 					   vg:image-quality-nonantialiased
 					   )))
@@ -135,7 +133,7 @@
       (vg:scale 1.0 -1.0)
       (vg:translate 0.0 -1080.0)
       )
-
+;; stops are kind of global
 (defparameter *stops*
   {0.0  0.15882353 0.2137255 0.16862746 1.0 
   0.5  0.10392157 0.1372549 0.2254902  1.0 
@@ -148,10 +146,10 @@
       (vec (rgb-fill '(1.0 1.0 0.0 1.0)))
       (vec (rgb-stroke	'(0.9 0.2 0.3 1.0))))
       ||#
-  (vg:with-mallocs
-    (let ((rgb-back   (vg:rgba))
-	  (rgb-fill   (vg:rgba 0.3 1.0 0.9))
-	  (rgb-stroke (vg:rgba 0.9 0.2 0.3))
+  (malloc:with
+    (let ((rgb-back   (malloc:rgba))
+	  (rgb-fill   (malloc:rgba 0.3 1.0 0.9))
+	  (rgb-stroke (malloc:rgba 0.9 0.2 0.3))
 ;;	  (origin     { 100.0 520.0 })
 	  )
 
@@ -214,7 +212,7 @@
   (native::deinit)
   )
 
-(defparameter *text* "of the current glyph, and applying the necessary positional adjustments (see Section 11.3), taking into account both the escapement values associated with the glyphs as well as the adjustments_x and adjustments_y parameters.
+(defparameter *text* "f the current glyph, and applying the necessary positional adjustments (see Section 11.3), taking into account both the escapement values associated with the glyphs as well as the adjustments_x and adjustments_y parameters.
 Following the call, the VG_GLYPH_ORIGIN parameter will be updated with the new origin.
 The paintModes parameter controls how glyphs are rendered. If paintModes is 0, neither VGImage-based nor VGPath-based glyphs are drawn.  This mode is useful for determining the metrics of the glyph sequence. If paintModes equals VG_FILL_PATH, VG_STROKE_PATH, or VG_FILL_PATH | VG_STROKE_PATH, path-based glyphs are filled, stroked (outlined), or both, respectively, and image-based glyphs are drawn.
 When the allowAutoHinting flag is set to VG_FALSE, rendering occurs without hinting. If allowAutoHinting is equal to VG_TRUE, autohinting may be optionally applied to alter the glyph outlines slightly for better rendering

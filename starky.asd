@@ -7,9 +7,8 @@
   :serial t
   :depends-on (#:cl-freetype2 #:trivial-with #:lisppi-openvg)
   :components ((:file "package")
-	       (:file "util")
-	       (:file "vec")
-
+;;	       (:file "util")
+;;	       (:file "vec")
 ;;	       (:file "font")
 
 	       

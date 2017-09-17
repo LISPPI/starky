@@ -135,14 +135,18 @@ while the old matrix data is preserved and restored on exit."
 (defun fill-linear-gradient (x1 y1 x2 y2 stops cnt)
   (let ((paint (vg:create-paint)))
     (vg:set-parameter-i paint vg:PAINT-TYPE vg:PAINT-TYPE-LINEAR-GRADIENT )
-    (vg:set-parameter-fv paint vg:PAINT-LINEAR-GRADIENT 4 { :float x1 y1 x2 y2} )
+    (vg:set-parameter-fv paint vg:PAINT-LINEAR-GRADIENT 4
+			 { :float x1 y1 x2 y2} )
       ;; stops
+
 
     (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-SPREAD-MODE VG:COLOR-RAMP-SPREAD-REFLECT)
     (vg:set-parameter-i paint VG:PAINT-COLOR-RAMP-PREMULTIPLIED 0);multmode
 
+
     (vg:set-parameter-fv paint VG:PAINT-COLOR-RAMP-STOPS (* 5 cnt) stops)
     (vg:set-paint paint vg:FILL-PATH)))
+
 
 (defun fill-radial-gradient (cx cy fx fy r stops cnt)
   (let ((paint (vg:create-paint)))
@@ -167,8 +171,8 @@ while the old matrix data is preserved and restored on exit."
 
 
 (defun start (w h)
-  (let ((white (vg:rgba #xFFFFFFFF))
-	(black (vg:rgba #x000000FF)))
+  (let ((white (malloc:rgba #xFFFFFFFF))
+	(black (malloc:rgba #x000000FF)))
     (vg:set-fv vg:clear-color 4 white)
     (vg:clear 0 0 w h)
     (fill black)
@@ -203,15 +207,27 @@ VG_PAINT_PATTERN_TILING_MODE
 ||#
 
 
+(defun tin1 ()
+  (native::init :api egl:openvg-api)
+  (vg:set-i vg:rendering-quality vg:quality-better)
+  (vg:set-i vg:pixel-layout vg:pixel-layout-rgb-vertical)
+  (vg:set-i vg:screen-layout vg:pixel-layout-rgb-vertical)
 
+  ;; testing text buffer prototype
+  
+  )
+
+
+(defun tout1 ()
+  (native::deinit)
+  )
 (defun tito ()
-   
-  (start 1024 768)
-  (background (vg:rgba 1.0 0.3 0.4 1.0))
-  (fill (vg:rgba 1.0 0.5 1.0 1.0))
-  (stroke (vg:rgba 1.0 1.0 0.0 1.0) )
+  (malloc:with
+    (start 1024 768)
+    (background (malloc:rgba 1.0 0.3 0.4 1.0))
+    (fill (malloc:rgba 1.0 0.5 1.0 1.0))
+    (stroke (malloc:rgba 1.0 1.0 0.0 1.0) )
 
-  (circle 512.0 0.0 1024.0)
-  (line 0.0 0.0 1024.0 768.0)
-  (end)
-)
+    (circle 512.0 0.0 1024.0)
+    (line 0.0 0.0 1024.0 768.0)
+    (end)))
